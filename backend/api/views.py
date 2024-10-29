@@ -4,6 +4,8 @@ import uuid
 from django.contrib.auth import authenticate, get_user_model
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 from rest_framework import status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -26,6 +28,13 @@ class RegisterView(APIView):
 
     permission_classes = [permissions.AllowAny]
 
+    @swagger_auto_schema(
+            request_body=UserRegistrationSerializer,
+            responses={201: openapi.Response(
+                'Регистрация пользователя',
+                openapi.Schema(type=openapi.TYPE_STRING)
+            )}
+        )
     def post(self, request):
         serializer = UserRegistrationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -46,6 +55,18 @@ class LoginView(APIView):
 
     permission_classes = [permissions.AllowAny]
 
+    @swagger_auto_schema(
+        request_body=LoginSerializer,
+        responses={
+            200: openapi.Response(
+                'Аутентификация пользователя', LoginSerializer
+            ),
+            401: openapi.Response(
+                'Неверные учетные данные',
+                openapi.Schema(type=openapi.TYPE_STRING)
+            )
+        }
+    )
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -73,6 +94,17 @@ class LoginView(APIView):
 class ReferralCodeView(APIView):
     """Создание/удаление реферального кода."""
 
+    @swagger_auto_schema(
+            responses={
+                201: openapi.Response(
+                    'Создание реферального кода', ReferralCodeSerializer
+                ),
+                400: openapi.Response(
+                    'У вас уже есть активный реферальный код.',
+                    openapi.Schema(type=openapi.TYPE_STRING)
+                )
+            }
+    )
     def post(self, request):
         user = request.user
 
@@ -98,6 +130,17 @@ class ReferralCodeView(APIView):
         result = await loop.run_in_executor(None, self.post, request)
         return result
 
+    @swagger_auto_schema(
+        responses={
+            204: openapi.Response(
+                'Удаление реферального кода'
+            ),
+            400: openapi.Response(
+                'У пользователя нет активного реферального кода',
+                openapi.Schema(type=openapi.TYPE_STRING)
+            )
+        }
+    )
     def delete(self, request):
         user = request.user
 
@@ -122,7 +165,24 @@ class ReferralCodeView(APIView):
 class GetReferralCodeByEmailView(APIView):
     """Получение реферального кода по email реферера."""
 
-    def get(self, request):
+    @swagger_auto_schema(
+        request_body=EmailSerializer,
+        responses={
+            200: openapi.Response(
+                'Получение реферального кода по email реферера',
+                ReferralCodeSerializer
+            ),
+            404: openapi.Response(
+                'У пользователя нет активного реферального кода',
+                openapi.Schema(type=openapi.TYPE_STRING)
+            ),
+            400: openapi.Response(
+                'Срок действия реферального кода истек',
+                openapi.Schema(type=openapi.TYPE_STRING)
+            )
+        }
+    )
+    def post(self, request):
         email_serializer = EmailSerializer(data=request.data)
         email_serializer.is_valid(raise_exception=True)
         email = email_serializer.validated_data.get('email')
@@ -154,6 +214,18 @@ class GetReferralCodeByEmailView(APIView):
 class ReferralsListView(APIView):
     """Получение списка рефералов."""
 
+    @swagger_auto_schema(
+        responses={
+            200: openapi.Response(
+                'Получение списка рефералов',
+                ReferralSerializer
+            ),
+            404: openapi.Response(
+                'У пользователя нет рефералов',
+                openapi.Schema(type=openapi.TYPE_STRING)
+            )
+        }
+    )    
     def get(self, request, pk):
         user = get_object_or_404(User, pk=pk)
         referrals = user.referrals.all()
