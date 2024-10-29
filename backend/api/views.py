@@ -1,6 +1,7 @@
 import asyncio
 import uuid
 
+from django.core.cache import cache
 from django.contrib.auth import authenticate, get_user_model
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -11,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from .constants import TIME_TO_CACHE
 from .serializers import (
     UserRegistrationSerializer, LoginSerializer,
     ReferralCodeSerializer, EmailSerializer,
@@ -123,6 +125,11 @@ class ReferralCodeView(APIView):
             expiration_date=expiration_date
         )
         serializer = ReferralCodeSerializer(referral_code)
+
+        # Добавляем реферальный код в кеш на 1 день
+        cache_key = f'referral_code_{user.email}'
+        cache.set(cache_key, referral_code, timeout=TIME_TO_CACHE)
+
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     async def async_post(self, request):
@@ -149,6 +156,10 @@ class ReferralCodeView(APIView):
                 {'detail': 'У вас нет активного реферального кода.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+        # Очищаем кеш для реферального кода пользователя
+        cache_key = f'referral_code_{user.email}'
+        cache.delete(cache_key)
 
         user.referral_code.delete()
         return Response(
@@ -164,6 +175,8 @@ class ReferralCodeView(APIView):
 
 class GetReferralCodeByEmailView(APIView):
     """Получение реферального кода по email реферера."""
+
+    permission_classes = (permissions.AllowAny,)
 
     @swagger_auto_schema(
         request_body=EmailSerializer,
@@ -188,8 +201,14 @@ class GetReferralCodeByEmailView(APIView):
         email = email_serializer.validated_data.get('email')
         referrer = get_object_or_404(User, email=email)
 
+        # Проверяем, есть ли реферальный код в кеше
+        cache_key = f'referral_code_{email}'
+        referral_code = cache.get(cache_key)
+
         try:
             referral_code = referrer.referral_code
+            # Кешируем реферальный код на 1 день
+            cache.set(cache_key, referral_code, timeout=TIME_TO_CACHE)
         except ReferralCode.DoesNotExist:
             return Response(
                 {'detail': 'У этого пользователя нет активного кода.'},
