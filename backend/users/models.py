@@ -4,7 +4,7 @@ from django.db import models
 from .constants import MAX_CHARFIELD_LENGTH, MAX_EMAIL_LENGTH
 
 
-class AplicationUser(AbstractUser):
+class ApplicationUser(AbstractUser):
     """Модель пользователя."""
 
     REQUIRED_FIELDS = (
