@@ -1,5 +1,7 @@
 from django.contrib.auth import get_user_model
-from rest_framework import serializers, validators
+from rest_framework import serializers
+
+from referral_system.models import ReferralCode
 
 
 User = get_user_model()
@@ -44,3 +46,9 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 'Необходимо ввести имя пользователя и пароль.'
             )
+
+
+class ReferralCodeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ReferralCode
+        fields = ('code', 'expiration_date')
