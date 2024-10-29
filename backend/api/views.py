@@ -1,15 +1,22 @@
 import asyncio
 import uuid
 
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, get_user_model
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .serializers import UserRegistrationSerializer, LoginSerializer, ReferralCodeSerializer
+from .serializers import (
+    UserRegistrationSerializer, LoginSerializer,
+    ReferralCodeSerializer, EmailSerializer
+)
 from referral_system.models import ReferralCode, MAX_LENGTH_REFERRAL_CODE
+
+
+User = get_user_model()
 
 
 class RegisterView(APIView):
@@ -62,7 +69,7 @@ class LoginView(APIView):
 
 
 class ReferralCodeView(APIView):
-    """Получение/удаление реферального кода."""
+    """Создание/удаление реферального кода."""
 
     def post(self, request):
         user = request.user
@@ -107,4 +114,36 @@ class ReferralCodeView(APIView):
     async def async_delete(self, request):
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(None, self.delete, request)
+        return result
+
+
+class GetReferralCodeByEmailView(APIView):
+    """Получение реферального кода по email реферера."""
+
+    def get(self, request):
+        email_serializer = EmailSerializer(data=request.data)
+        email_serializer.is_valid(raise_exception=True)
+        email = email_serializer.validated_data.get('email')
+        referrer = get_object_or_404(User, email=email)
+
+        try:
+            referral_code = referrer.referral_code
+        except ReferralCode.DoesNotExist:
+            return Response(
+                {'detail': 'У этого пользователя нет активного кода.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if referral_code.is_expired():
+            return Response(
+                {'detail': 'Срок действия реферального кода истек.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = ReferralCodeSerializer(referral_code)
+        return Response(serializer.data)
+
+    async def async_get(self, request, email):
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, self.get, request, email)
         return result

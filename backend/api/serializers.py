@@ -52,3 +52,7 @@ class ReferralCodeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ReferralCode
         fields = ('code', 'expiration_date')
+
+
+class EmailSerializer(serializers.Serializer):
+    email = serializers.EmailField()
