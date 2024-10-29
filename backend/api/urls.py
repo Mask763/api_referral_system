@@ -1,7 +1,8 @@
 from django.urls import path
 
 from .views import (
-    RegisterView, LoginView, ReferralCodeView, GetReferralCodeByEmailView
+    RegisterView, LoginView, ReferralCodeView,
+    GetReferralCodeByEmailView, ReferralsListView
 )
 
 urlpatterns = [
@@ -12,5 +13,10 @@ urlpatterns = [
         'referral_code/get_by_email/',
         GetReferralCodeByEmailView.as_view(),
         name='get_referral_code_by_email'
+    ),
+    path(
+        'referrals/<int:pk>/',
+        ReferralsListView.as_view(),
+        name='referrals'
     ),
 ]

@@ -11,9 +11,11 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from .serializers import (
     UserRegistrationSerializer, LoginSerializer,
-    ReferralCodeSerializer, EmailSerializer
+    ReferralCodeSerializer, EmailSerializer,
+    ReferralSerializer
 )
-from referral_system.models import ReferralCode, MAX_LENGTH_REFERRAL_CODE
+from referral_system.constants import MAX_LENGTH_REFERRAL_CODE
+from referral_system.models import ReferralCode
 
 
 User = get_user_model()
@@ -146,4 +148,28 @@ class GetReferralCodeByEmailView(APIView):
     async def async_get(self, request, email):
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(None, self.get, request, email)
+        return result
+
+
+class ReferralsListView(APIView):
+    """Получение списка рефералов."""
+
+    def get(self, request, pk):
+        user = get_object_or_404(User, pk=pk)
+        referrals = user.referrals.all()
+
+        if not referrals:
+            return Response(
+                {'detail': 'У этого пользователя нет рефералов.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = ReferralSerializer(referrals, many=True)
+        return Response(serializer.data)
+
+    async def async_get(self, request, referrer_id):
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            None, self.get, request, referrer_id
+        )
         return result
