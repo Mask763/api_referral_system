@@ -12,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .constants import TIME_TO_CACHE
+from .constants import TIME_TO_CODE, TIME_TO_CACHE
 from .serializers import (
     UserRegistrationSerializer, LoginSerializer,
     ReferralCodeSerializer, EmailSerializer,
@@ -118,7 +118,7 @@ class ReferralCodeView(APIView):
             )
 
         code = str(uuid.uuid4())[:MAX_LENGTH_REFERRAL_CODE]
-        expiration_date = timezone.now() + timezone.timedelta(days=7)
+        expiration_date = timezone.now() + timezone.timedelta(days=TIME_TO_CODE)
         referral_code = ReferralCode.objects.create(
             user=user,
             code=code,
